@@ -5,9 +5,11 @@ import Data.Maybe (fromJust)
 type Pos = (Int,Int)
 type Dir = (Int,Int)
 
-repeatedly :: (a -> Maybe a) -> a -> [a]
-repeatedly f x = case f x of Nothing -> []
-                             Just y  -> y : repeatedly f y
+pathFrom :: [String] -> (Pos, Dir) -> [(Pos,Dir)]
+pathFrom grid start = reverse $ extendPath grid start []
+    where extendPath grid start previous = case step grid start of
+            Nothing -> previous
+            Just newPos -> extendPath grid newPos (newPos:previous)
 
 step :: [String] -> (Pos, Dir) -> Maybe (Pos, Dir)
 step grid (pos@(px,py), dir@(dx,dy))
@@ -18,13 +20,15 @@ step grid (pos@(px,py), dir@(dx,dy))
       (nx, ny) = (px + dx, py + dy)
       out = nx < 0 || nx >= length (head grid) || ny < 0 || ny >= length grid
       bump = grid !! ny !! nx == '#'
-      turn (0,-1) = (1,0)
-      turn (1,0) = (0,1)
-      turn (0,1) = (-1,0)
-      turn (-1,0) = (0,-1)
+
+turn :: (Int, Int) -> (Int, Int)
+turn (0,-1) = (1,0)
+turn (1,0) = (0,1)
+turn (0,1) = (-1,0)
+turn (-1,0) = (0,-1)
 
 partOne :: [[Char]] -> Int
-partOne grid = length $ nub $ map fst (start : repeatedly (step grid) start)
+partOne grid = length $ nub $ map fst (start : pathFrom grid start)
     where start = (guard, (0,-1))
           guard = (gx,gy)
           gy = fromJust $ findIndex (elem '^') grid
