@@ -2,16 +2,16 @@ module Day13 where
 
 import Text.ParserCombinators.ReadP
 import Data.Char (isNumber)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, mapMaybe)
 import Data.List (sort)
 
-type Pos = (Int,Int)
+type Pos = (Integer,Integer)
 type Machine = ((Pos,Pos),Pos)
 
-number :: ReadP Int
+number :: ReadP Integer
 number = read <$> many1 (satisfy isNumber)
 
-button :: ReadP (Int, Int)
+button :: ReadP Pos
 button = do
     string "Button "
     get
@@ -21,7 +21,7 @@ button = do
     y <- number
     return (x,y)
 
-prize :: ReadP (Int, Int)
+prize :: ReadP Pos
 prize = do
     string "Prize: X="
     x <- number
@@ -41,20 +41,27 @@ machine = do
 arcade :: ReadP [Machine]
 arcade = sepBy1 machine (string "\n\n")
 
-winners :: Machine -> [(Int,Int)]
-winners machine = filter winning [(an,bn) | an <- [0..100], bn <- [0..100]]
-    where (((ax,ay),(bx,by)),(px,py)) = machine
-          winning (an,bn) = (an*ax+bn*bx,an*ay+bn*by) == (px,py)
+solve :: Machine -> Maybe Pos
+solve (((ax,ay),(bx,by)),(px,py)) = if snd an == 0 && snd bn == 0 then Just (fst an, fst bn) else Nothing
+    where an = (px*by - py*bx) `divMod` (ax*by-ay*bx)
+          bn = (px*ay - py*ax) `divMod` (bx*ay-by*ax)
 
-cost :: Pos -> Int
+cost :: Pos -> Integer
 cost (a,b) = 3*a + b
 
-partOne :: [Machine] -> Int
-partOne = sum . concatMap (take 1 . sort . map cost . winners)
+partOne :: [Machine] -> Integer
+partOne = sum . map cost . mapMaybe solve
+
+partTwo :: [Machine] -> Integer
+partTwo = partOne . map respec
+
+respec :: Machine -> Machine
+respec (claw,(px,py)) = (claw,(px+10000000000000,py+10000000000000))
 
 main = do
     machines <- fromJust . parseMaybe arcade <$> readFile "day13.txt"
     print $ partOne machines
+    print $ partTwo machines
 
 parseMaybe :: ReadP a -> String -> Maybe a
 parseMaybe parser input =
