@@ -2,6 +2,7 @@ module Day15 where
 
 import qualified Data.Map as M
 import Data.List.HT (takeUntil)
+import Data.List (nub)
 
 type Pos = (Int,Int)
 type Grid = M.Map Pos Char
@@ -27,13 +28,36 @@ offset '>' = (1,0)
 offset 'v' = (0,1)
 
 moveBot :: Grid -> Pos -> Grid
-moveBot grid dir = if canMove then grid' else grid
+moveBot grid dir = if canMove grid dir [] bot then grid' else grid
     where heading = iterate (add dir) bot
           at pos = M.findWithDefault '.' pos grid
-          spots = takeUntil ((`elem` "#.") . at) heading
-          canMove = at (last spots) == '.'
+          spots = makeMoves grid dir [] bot
           grid' = M.mapKeys (\p -> if p `elem` spots then add p dir else p) grid
           bot = head $ M.keys $ M.filter ('@' ==) grid
+
+canMove :: Grid -> Pos -> [Pos] -> Pos -> Bool
+canMove grid dir@(x,y) seen p
+  | next == '.' = True
+  | next == '#' = False
+  | next == 'O' = canMove grid dir [] (add p dir)
+  | next == '[' = all (canMove grid dir (nextPos:add nextPos (1,0):seen)) $ filter (`notElem` seen) [nextPos, add nextPos (1,0)]
+  | next == ']' = all (canMove grid dir (nextPos:add nextPos (-1,0):seen)) $ filter (`notElem` seen) [nextPos, add nextPos (-1,0)]
+  where
+      at pos = M.findWithDefault '.' pos grid
+      nextPos = add p dir
+      next = at nextPos
+
+makeMoves :: Grid -> Pos -> [Pos] -> Pos -> [Pos]
+makeMoves grid dir@(x,y) seen p
+  | next == '.' = [p]
+  | next == '#' = error "Shouldn't bump"
+  | next == 'O' = p : makeMoves grid dir [] (add p dir)
+  | next == '[' = p : concatMap (makeMoves grid dir (nextPos:add nextPos (1,0):seen)) (filter (`notElem` seen) $ nub [nextPos, add nextPos (1,0)])
+  | next == ']' = p : concatMap (makeMoves grid dir (nextPos:add nextPos (-1,0):seen)) (filter (`notElem` seen) $ nub [nextPos, add nextPos (-1,0)])
+  where
+      at pos = M.findWithDefault '.' pos grid
+      nextPos = add p dir
+      next = at nextPos
 
 display :: Grid -> [String]
 display grid = [ [ M.findWithDefault '.' (x,y) grid | x <- [0..xMax]] | y <- [0..yMax]]
@@ -43,11 +67,21 @@ execute :: Grid -> String -> Grid
 execute grid = foldl moveBot grid . map offset
 
 gps :: Grid -> Int
-gps grid = sum $ map (\(x,y) -> 100*y+x) $ M.keys $ M.filter ('O' ==) grid
+gps grid = sum $ map (\(x,y) -> 100*y+x) $ M.keys $ M.filter (`elem` "O[") grid
 
 partOne :: Grid -> String -> Int
 partOne grid cmd = gps $ execute grid cmd
 
+partTwo :: Grid -> String -> Int
+partTwo grid cmd = gps $ execute (widen grid) cmd
+
+widen :: Grid -> Grid
+widen = M.fromList . concatMap doWiden . M.assocs
+    where doWiden ((x,y),'#') = [((x*2,y),'#'),((x*2+1,y),'#')]
+          doWiden ((x,y),'O') = [((x*2,y),'['),((x*2+1,y),']')]
+          doWiden ((x,y),'@') = [((x*2,y),'@')]
+
 main = do
     (grid, cmd) <- parse <$> readFile "day15.txt"
     print $ partOne grid cmd
+    print $ partTwo grid cmd
