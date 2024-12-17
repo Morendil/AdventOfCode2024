@@ -1,9 +1,10 @@
-module Day17 where
+module Main where
 
 import Data.Bits (xor)
 import qualified Data.Map as M
 import Data.List (intercalate)
 import Data.Char (isDigit)
+
 type Regs = M.Map Int Int
 
 combo :: Regs -> Int -> Int
@@ -44,6 +45,15 @@ parse lines = (program, value)
 partOne :: [Int] -> Int -> String
 partOne program value = output $ run program value
 
+choices :: [Int] -> [Int]
+choices program = foldl generate [0] (reverse program)
+    where digitAfter target m = [m*8+n | n <- [0..7], let b=n `xor` 5, let d=(b `xor` (((m*8+n) `div` (2^b)) `mod` 8)) `xor` 6, d==target]
+          generate starts target = concatMap (digitAfter target) starts
+
+partTwo :: [Int] -> Int
+partTwo = minimum . choices
+
 main = do
     (program, value) <- parse . lines <$> readFile "day17.txt"
     print $ partOne program value
+    print $ partTwo program
