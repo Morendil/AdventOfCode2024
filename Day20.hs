@@ -25,13 +25,27 @@ path maze = start : fromJust (bfs nextMoves (end ==) start)
           valid pos = M.findWithDefault '.' pos maze /= '#'
 
 cheatsFrom :: [Pos] -> Pos -> [(Int,(Pos,Pos))]
-cheatsFrom path pos = filter ((<) 0.fst) $ map saves $ filter (`elem` path) $ skips pos
+cheatsFrom path pos = filter ((>0).fst) $ map saves $ filter (`elem` path) $ skips pos
     where saves skip = (fromJust (elemIndex skip path) - fromJust (elemIndex pos path) - 2,(pos,skip))
+
+bigCheatsFrom :: M.Map Pos Int -> [Pos] -> Pos -> [(Int, (Pos, Pos))]
+bigCheatsFrom ind path pos = filter ((<) 0.fst) $ map saves $ filter ((<= 20) . dist pos) path
+    where saves skip = (fromJust (M.lookup skip ind) - start - dist pos skip,(pos,skip))
+          start = fromJust (M.lookup pos ind)
+
+dist :: Pos -> Pos -> Int
+dist (x1,y1) (x2,y2) = abs (x2-x1) + abs (y2-y1)
 
 partOne :: Grid -> Int
 partOne maze = length $ concatMap (filter ((>= 100) . fst) . cheatsFrom route) route
     where route = path maze
 
+partTwo :: Grid -> Int
+partTwo maze = length $ concatMap (filter ((>= 100) . fst) . bigCheatsFrom indices route) route
+    where route = path maze
+          indices = M.fromList $ zip route [0..]
+
 main = do
     maze <- asMap . lines <$> readFile "day20.txt"
     print $ partOne maze
+    print $ partTwo maze
