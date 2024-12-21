@@ -13,6 +13,9 @@ type Grid = M.Map Pos Char
 type Where = M.Map Char Pos
 type Path = (Pos,[(Char,Pos)])
 
+type Paths = M.Map (Char,Char) [String]
+type Costs = M.Map ((Char,Char),Int) Int
+
 numberPad :: Grid
 numberPad = asMap ["789","456","123",".0A"]
 
@@ -59,32 +62,46 @@ numberPaths = paths numberPad numberWhere
 dirPaths :: Char -> Char -> [String]
 dirPaths = paths dirPad dirWhere
 
+dirPathsMemo = M.fromList [((d1,d2),dirPaths d1 d2) | (d1,d2) <- cross "A<>^v"]
+
 cross :: Eq a => [a] -> [(a, a)]
-cross n = [(x,y) | x <-n, y <- n, x /= y]
+cross n = [(x,y) | x <-n, y <- n]
 
 layerOne :: String -> [String]
 layerOne code = map concat $ zipWithM numberPaths ('A':code) code
 
-layerTwo :: String -> [String]
-layerTwo code = concatMap options $ layerOne code
-    where options presses = map concat $ zipWithM dirPaths ('A':presses) presses
-
-layerThree :: String -> [String]
-layerThree code = concatMap options $ layerTwo code
-    where options presses = map concat $ zipWithM dirPaths ('A':presses) presses
-
-complexity :: String -> Int
-complexity code = minimum $ map length $ layerThree code
+complexity :: Int -> String -> Int
+complexity level code = minimum $ map (cost level) $ layerOne code
 
 numericPart :: String -> Int
 numericPart code = read $ filter isDigit code
 
-value :: String -> Int
-value code = complexity code * numericPart code
+value :: Int -> String -> Int
+value level code = complexity level code * numericPart code
 
 partOne :: [String] -> Int
-partOne = sum . map value
+partOne = sum . map (value 1)
+
+partTwo :: [String] -> Int
+partTwo = sum . map (value 24)
+
+cost :: Int -> String -> Int
+cost 0 code = length code
+cost n code = sum $ zipWith (\d1 d2 -> fromJust $ M.lookup ((d1,d2),n) layer) ('A':code) code
+    where layer = buildLayer n
+
+dirPairs = cross "A<>^v"
+
+buildLayer :: Int -> Costs
+buildLayer 0 = M.fromList [(((d1,d2),0),minimum $ map length $ fromJust $ M.lookup (d1,d2) dirPathsMemo) | (d1,d2) <- dirPairs]
+buildLayer n = M.fromList $ top ++ M.assocs prev
+    where prev = buildLayer (n-1)
+          top = [((p,n), minimum $ map costOf (pathsOf p)) | p <- dirPairs]
+          pathsOf p = fromJust $ M.lookup p dirPathsMemo
+          costOf :: String -> Int
+          costOf path = sum $ zipWith (\d1 d2 -> fromJust $ M.lookup ((d1,d2),n-1) prev) ('A':path) path
 
 main = do
     codes <- lines <$> readFile "day21.txt"
     print $ partOne codes
+    print $ partTwo codes
