@@ -1,8 +1,11 @@
 module Day23 where
 
+import Data.Algorithm.MaximalCliques
+
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.List (nub, tails)
+import Data.List.Extra (maximumOn)
+import Data.List (nub, tails, sort, intercalate)
 import Data.Tuple (swap)
 
 asPair :: String -> (String, String)
@@ -18,6 +21,14 @@ partOne links = length $ nub $ concatMap three ts
           three t = map (setWith t) $ filter (`elem` undir) $ pairs $ M.findWithDefault [] t m
           setWith a (b,c) = S.fromList [a,b,c]
 
+partTwo :: [(String,String)] -> String
+partTwo links = intercalate "," $ sort $ maximumOn length cliques
+    where pairs n = [(x,y) | (x:ys) <- tails n, y <- ys]
+          nodes = nub (map fst links ++ map snd links)
+          undir = links ++ map swap links
+          cliques = getMaximalCliques (\a b -> (a,b) `elem` undir) nodes
+
 main = do
     links <- map asPair . lines <$> readFile "day23.txt"
     print $ partOne links
+    print $ partTwo links
