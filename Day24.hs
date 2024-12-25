@@ -66,7 +66,7 @@ toBinary = unfoldr toBinary'
           toBinary' n = Just (n `mod` 2, n `div` 2)
 
 main = do
-    (nodes, circuit, values) <- fromJust . parseMaybe spec <$> readFile "day24.txt"
+    (nodes, circuit, values) <- fromJust . parseMaybe spec <$> readFile "day24.fixed.txt"
     -- print $ partOne nodes circuit values
     let adderLines (target,(op,(n1,n2))) = [concat [n1," -> ",target," [label=\""++op++"\"];"], concat [n2," -> ",target," [label=\""++op++"\"];"]]
     mapM_ putStrLn $ concatMap adderLines $ M.assocs circuit
